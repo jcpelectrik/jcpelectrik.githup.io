@@ -6,6 +6,17 @@ body {
 
 main {
     flex: 1;
+    divb{
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+    }
+    divc{
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        width: 33.33%
+    }
 }
 header{
     background-color: darkorange;
