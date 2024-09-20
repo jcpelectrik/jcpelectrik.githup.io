@@ -11,11 +11,14 @@ main {
         flex-wrap: wrap;
         justify-content: space-around;
     }
-    divc{
-        display: flex;
-        flex-direction: column;
-        flex-wrap: wrap;
-        width: 33.33%
+    diva{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 10px; 
+     divc, divd, dive{
+            display: flex;
+            flex-direction: column;
+     }
     }
 }
 header{
