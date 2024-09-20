@@ -6,20 +6,21 @@ body {
 
 main {
     flex: 1;
-    divb{
+    .cabecera{
         display: flex;
         flex-wrap: wrap;
         justify-content: space-around;
     }
-    diva{
+    .columnas{
         display: grid;
         grid-template-columns: repeat(3, 1fr); 
         gap: 10px; 
-     divc, divd, dive{
-            display: flex;
-            flex-direction: column;
-     }
     }
+ 
+    .columnastipo{
+        display: flex;
+        flex-direction: column;
+     }
 }
 header{
     background-color: darkorange;
