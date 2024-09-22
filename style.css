@@ -3,24 +3,38 @@ body {
     display: flex;
     flex-direction: column;
 }
-
 main {
     flex: 1;
-    .cabecera{
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-around;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.cabecera {
+    display: flex;
+    grid-column: span 3;
+    text-align: center;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+
+.columnas {
+    display: contents;
+}
+
+.columnastipo {
+    padding: 20px;
+    border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+    main {
+        grid-template-columns: 1fr;
     }
-    .columnas{
-        display: grid;
-        grid-template-columns: repeat(3, 1fr); 
-        gap: 10px; 
+
+    .cabecera {
+        grid-column: span 1;
     }
- 
-    .columnastipo{
-        display: flex;
-        flex-direction: column;
-     }
 }
 header{
     background-color: darkorange;
