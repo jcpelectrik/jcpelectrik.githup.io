@@ -17,7 +17,6 @@ main {
     grid-column: span 3; /* La cabecera ocupa las 3 columnas en pantallas grandes */
     text-align: center;
 }
-
 .columnas {
     grid-column: span 3; /* La fila de columnas también debe ocupar todo el ancho */
     display: grid;
