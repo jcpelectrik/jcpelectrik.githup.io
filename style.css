@@ -57,6 +57,7 @@ main {
     max-height: 200px;
     object-fit: cover;
 }
+
 /* Media query para pantallas pequeñas */
 @media (max-width: 768px) {
     main {
