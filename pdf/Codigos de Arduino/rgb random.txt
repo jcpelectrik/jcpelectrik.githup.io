@@ -1,0 +1,18 @@
+int green=2;
+int red=1;
+int blue=3;
+int space=1000;
+void setup()
+{
+  pinMode(green, OUTPUT);
+  pinMode(red, OUTPUT);
+  pinMode(blue, OUTPUT);
+}
+
+void loop()
+{
+ analogWrite(green,random(0,255)); 
+ analogWrite(red,random(0,255));
+ analogWrite(blue,random(0,255));
+             delay(space);
+}

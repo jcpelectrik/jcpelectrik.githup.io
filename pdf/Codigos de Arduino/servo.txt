@@ -1,0 +1,21 @@
+#include <Servo.h>
+
+Servo myservo; 
+
+void setup() {
+  myservo.attach(2);  // servo en el pin 2
+}
+
+void loop() {
+  for (int angulo = 0; angulo <= 180; angulo += 1) 
+  { 
+    myservo.write(angulo);              
+    delay(10); 
+  }
+  
+  for (int angulo = 180; angulo >= 0; angulo -= 1) 
+  { 
+    myservo.write(angulo);  
+    delay(10);  
+  }
+}

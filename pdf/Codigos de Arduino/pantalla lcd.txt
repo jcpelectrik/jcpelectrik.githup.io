@@ -1,0 +1,20 @@
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+//Crear el objeto lcd  dirección  0x3F y 16 columnas x 2 filas
+LiquidCrystal_I2C lcd(0x3F,16,2);  //
+
+void setup() {
+  // Inicializar el LCD
+  Wire.begin(35, 36);
+  lcd.init();
+  //Encender la luz de fondo.
+  lcd.backlight();
+  
+}
+
+void loop() {
+
+  // Cursor en la primera posición de la primera fila
+  lcd.setCursor(0,0);
+  lcd.print("hola mundo");
+}

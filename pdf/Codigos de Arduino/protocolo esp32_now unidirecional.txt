@@ -1,0 +1,223 @@
+ESP32-S3 trasmitsor 
+/*
+ESP-NOW Broadcast Master
+Lucas Saavedra Vaz - 2024
+
+Este boceto demuestra cómo transmitir mensajes a todos los dispositivos dentro de la red ESP-NOW.
+Este ejemplo está pensado para usarse con el ejemplo ESP-NOW Broadcast Slave.
+
+El dispositivo maestro transmitirá un mensaje cada 5 segundos a todos los dispositivos dentro de la red.
+Esto se hará mediante el registro de un objeto de par con la dirección de transmisión.
+
+Los dispositivos esclavos recibirán los mensajes transmitidos y los imprimirán en el Monitor serial.
+*/
+
+#include "ESP32_NOW.h"
+#include "WiFi.h"
+#include <esp_mac.h>  // Para las macros MAC2STR y MACSTR
+
+/* Definiciones */
+
+#define ESPNOW_WIFI_CHANNEL 6
+
+/* Clases */
+
+// Es necesario crear una nueva clase que herede de la clase ESP_NOW_Peer.
+
+class ESP_NOW_Broadcast_Peer : public ESP_NOW_Peer {
+public:
+
+  // Constructor de la clase que utiliza la dirección de difusión
+  ESP_NOW_Broadcast_Peer(uint8_t channel, wifi_interface_t iface, const uint8_t *lmk) : ESP_NOW_Peer(ESP_NOW.BROADCAST_ADDR, channel, iface, lmk) {}
+
+  // Destructor de la clase
+  ~ESP_NOW_Broadcast_Peer() {
+    remove();
+  }
+
+  // Función para inicializar correctamente el ESP-NOW y registrar el par de transmisión
+  bool begin() {
+    if (!ESP_NOW.begin() || !add()) {
+      log_e("Failed to initialize ESP-NOW or register the broadcast peer");
+      return false;
+    }
+    return true;
+  }
+
+  // Función para enviar un mensaje a todos los dispositivos dentro de la red
+  bool send_message(const uint8_t *data, size_t len) {
+    if (!send(data, len)) {
+      log_e("Failed to broadcast message");
+      return false;
+    }
+    return true;
+  }
+};
+
+/* Variables globales */
+
+uint32_t msg_count = 0;
+
+// Crear un objeto de transmisión peer
+ESP_NOW_Broadcast_Peer broadcast_peer(ESPNOW_WIFI_CHANNEL, WIFI_IF_STA, NULL);
+
+/* Main */
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {
+    delay(10);
+  }
+
+  // Inicializar el módulo Wi-Fi
+  WiFi.mode(WIFI_STA);
+  WiFi.setChannel(ESPNOW_WIFI_CHANNEL);
+  while (!WiFi.STA.started()) {
+    delay(100);
+  }
+
+  Serial.println("ESP-NOW Example - Broadcast Master");
+  Serial.println("Wi-Fi parameters:");
+  Serial.println("  Mode: STA");
+  Serial.println("  MAC Address: " + WiFi.macAddress());
+  Serial.printf("  Channel: %d\n", ESPNOW_WIFI_CHANNEL);
+
+  // Registrar el par de transmisión
+  if (!broadcast_peer.begin()) {
+    Serial.println("Failed to initialize broadcast peer");
+    Serial.println("Reebooting in 5 seconds...");
+    delay(5000);
+    ESP.restart();
+  }
+
+  Serial.println("Configuración completa. Se transmiten mensajes cada 5 segundos.");
+}
+
+void loop() {
+  // Transmitir un mensaje a todos los dispositivos dentro de la red
+  char data[32];
+  snprintf(data, sizeof(data), "Hello, World! y Adios Mundo #%lu", msg_count++);
+  
+  Serial.printf("Broadcasting mensaje: %s\n", data);
+
+  if (!broadcast_peer.send_message((uint8_t *)data, sizeof(data))) {
+    Serial.println("No se pudo transmitir el mensaje.");
+  }
+
+  delay(5000);
+}
+
+
+ESP32-S3 receptor
+/*
+  Dispositivo esclavo de transmisión ESP-NOW
+Lucas Saavedra Vaz - 2024
+
+Este boceto demuestra cómo recibir mensajes de transmisión desde un dispositivo maestro utilizando el protocolo ESP-NOW.
+
+El dispositivo maestro transmitirá un mensaje cada 5 segundos a todos los dispositivos dentro de la red.
+
+Los dispositivos esclavos recibirán los mensajes transmitidos. Si no son de un dispositivo maestro conocido, se registrarán como un nuevo dispositivo maestro
+utilizando una función de devolución de llamada.
+*/
+
+#include "ESP32_NOW.h"
+#include "WiFi.h"
+#include <esp_mac.h>  // Para las macros MAC2STR y MACSTR
+#include <vector>
+
+/* Definiciones */
+
+#define ESPNOW_WIFI_CHANNEL 6
+
+/* Clases */
+
+// Es necesario crear una nueva clase que herede de la clase ESP_NOW_Peer.
+
+class ESP_NOW_Peer_Class : public ESP_NOW_Peer {
+public:
+  // Constructor de la clase
+  ESP_NOW_Peer_Class(const uint8_t *mac_addr, uint8_t channel, wifi_interface_t iface, const uint8_t *lmk) : ESP_NOW_Peer(mac_addr, channel, iface, lmk) {}
+
+  // Destructor de la clase
+  ~ESP_NOW_Peer_Class() {}
+
+  // Función para registrar el par maestro
+  bool add_peer() {
+    if (!add()) {
+      log_e("Failed to register the broadcast peer");
+      return false;
+    }
+    return true;
+  }
+
+  // Función para imprimir los mensajes recibidos del master
+  void onReceive(const uint8_t *data, size_t len, bool broadcast) {
+    Serial.printf("Received a message from master " MACSTR " (%s)\n", MAC2STR(addr()), broadcast ? "broadcast" : "unicast");
+    Serial.printf("  Message: %s\n", (char *)data);
+  }
+};
+
+/* Variables Glovales */
+
+// Lista de todos los maestros. Se completará cuando se registre un nuevo maestro.
+std::vector<ESP_NOW_Peer_Class> masters;
+
+/* Devoluciones de llamadas */
+
+// Se llama a la devolución de llamada cuando un par desconocido envía un mensaje
+void register_new_master(const esp_now_recv_info_t *info, const uint8_t *data, int len, void *arg) {
+  if (memcmp(info->des_addr, ESP_NOW.BROADCAST_ADDR, 6) == 0) {
+    Serial.printf("Unknown peer " MACSTR " sent a broadcast message\n", MAC2STR(info->src_addr));
+    Serial.println("Registering the peer as a master");
+
+    ESP_NOW_Peer_Class new_master(info->src_addr, ESPNOW_WIFI_CHANNEL, WIFI_IF_STA, NULL);
+
+    masters.push_back(new_master);
+    if (!masters.back().add_peer()) {
+      Serial.println("Failed to register the new master");
+      return;
+    }
+  } else {
+    // El esclavo solo recibirá mensajes de difusión.
+    log_v("Recibí un mensaje del maestro " MACSTR, MAC2STR(info->src_addr));
+    log_v("Igorning the message");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {
+    delay(10);
+  }
+
+  // Inicializar el módulo Wi-Fi
+  WiFi.mode(WIFI_STA);
+  WiFi.setChannel(ESPNOW_WIFI_CHANNEL);
+  while (!WiFi.STA.started()) {
+    delay(100);
+  }
+
+  Serial.println("ESP-NOW Example - Broadcast Slave");
+  Serial.println("Wi-Fi parameters:");
+  Serial.println("  Mode: STA");
+  Serial.println("  MAC Address: " + WiFi.macAddress());
+  Serial.printf("  Channel: %d\n", ESPNOW_WIFI_CHANNEL);
+
+  // Inicializar el protocolo ESP-NOW
+  if (!ESP_NOW.begin()) {
+    Serial.println("No se pudo inicializar ESP-NOW");
+    Serial.println("Reiniciando en 5 segundos...");
+    delay(5000);
+    ESP.restart();
+  }
+
+  // Registrar la nueva devolución de llamada de pares
+  ESP_NOW.onNewPeer(register_new_master, NULL);
+
+  Serial.println("Configuración completa. Esperando que un maestro transmita un mensaje...");
+}
+
+void loop() {
+  delay(1000);
+}
